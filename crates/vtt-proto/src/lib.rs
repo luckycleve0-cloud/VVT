@@ -344,7 +344,7 @@ pub enum Event {
     },
     /// Изменился туман.
     FogChanged {
-        shapes: usize,
+        shapes: Vec<vtt_core::scene::FogShape>,
     },
     /// Лист персонажа обновился (снапшот для владельца/ГМ).
     CharacterUpdated {
@@ -372,7 +372,7 @@ pub enum Event {
     },
     /// Изменились стены/двери.
     WallsChanged {
-        walls: usize,
+        walls: Vec<vtt_core::scene::Wall>,
     },
     /// Изменились границы сцены.
     SceneBoundsChanged {

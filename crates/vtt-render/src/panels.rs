@@ -1154,17 +1154,17 @@ fn keys_tab(
         15.0,
         rgba(200, 206, 220, 255),
     );
-    let row_height = 19.0;
+    let row_height = 23.0;
     for (index, action) in Action::ALL.iter().enumerate() {
-        let row_y = y + 120.0 + index as f32 * row_height;
-        if row_y > y + 520.0 {
-            break;
-        }
+        let column = index / 10;
+        let row = index % 10;
+        let cx = x + 22.0 + column as f32 * 385.0;
+        let row_y = y + 120.0 + row as f32 * row_height;
         text(
             assets,
             action.name_ru(),
-            x + 22.0,
-            row_y + 14.0,
+            cx,
+            row_y + 15.0,
             13.0,
             rgba(214, 220, 232, 255),
         );
@@ -1175,22 +1175,22 @@ fn keys_tab(
             keys.label(*action)
         };
         draw_rectangle(
-            x + 300.0,
+            cx + 200.0,
             row_y,
-            120.0,
-            18.0,
+            100.0,
+            20.0,
             if is_capture {
                 rgba(58, 82, 120, 255)
             } else {
                 rgba(30, 33, 40, 255)
             },
         );
-        draw_rectangle_lines(x + 300.0, row_y, 120.0, 18.0, 1.0, rgba(80, 90, 108, 255));
+        draw_rectangle_lines(cx + 200.0, row_y, 100.0, 20.0, 1.0, rgba(80, 90, 108, 255));
         text(
             assets,
             &key_text,
-            x + 308.0,
-            row_y + 13.0,
+            cx + 207.0,
+            row_y + 14.0,
             12.0,
             rgba(235, 240, 248, 255),
         );
@@ -1198,7 +1198,7 @@ fn keys_tab(
             assets,
             mouse,
             clicked,
-            Rect::new(x + 430.0, row_y - 1.0, 100.0, 19.0),
+            Rect::new(cx + 308.0, row_y, 74.0, 20.0),
             if is_capture {
                 "отмена"
             } else {

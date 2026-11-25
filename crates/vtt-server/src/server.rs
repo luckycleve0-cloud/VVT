@@ -746,7 +746,7 @@ impl GameServer {
                 let scene = self.campaign.scene_mut();
                 scene.fog.mode = FogMode::Manual;
                 scene.fog.add_shape(FogShape::Circle { center, radius });
-                let shapes = self.campaign.scene().fog.shapes.len();
+                let shapes = scene.fog.shapes.clone();
                 vec![Outgoing::broadcast(ServerMsg::Events(vec![
                     Event::FogChanged { shapes },
                 ]))]
@@ -758,7 +758,7 @@ impl GameServer {
                 }
                 self.campaign.scene_mut().fog.clear();
                 vec![Outgoing::broadcast(ServerMsg::Events(vec![
-                    Event::FogChanged { shapes: 0 },
+                    Event::FogChanged { shapes: Vec::new() },
                 ]))]
             }
 
@@ -926,7 +926,7 @@ impl GameServer {
                     Wall::solid(a, b)
                 };
                 self.campaign.scene_mut().walls.push(wall);
-                let walls = self.campaign.scene().walls.len();
+                let walls = self.campaign.scene().walls.clone();
                 vec![Outgoing::broadcast(ServerMsg::Events(vec![
                     Event::WallsChanged { walls },
                 ]))]
@@ -939,7 +939,7 @@ impl GameServer {
                 if !self.campaign.scene_mut().toggle_door(index) {
                     return deny(client, "стена не найдена");
                 }
-                let walls = self.campaign.scene().walls.len();
+                let walls = self.campaign.scene().walls.clone();
                 vec![Outgoing::broadcast(ServerMsg::Events(vec![
                     Event::WallsChanged { walls },
                 ]))]
@@ -954,7 +954,7 @@ impl GameServer {
                     return deny(client, "стена не найдена");
                 }
                 scene.walls.remove(index);
-                let walls = scene.walls.len();
+                let walls = scene.walls.clone();
                 vec![Outgoing::broadcast(ServerMsg::Events(vec![
                     Event::WallsChanged { walls },
                 ]))]
@@ -1851,13 +1851,13 @@ mod tests {
         );
         assert!(events(&out)
             .iter()
-            .any(|event| matches!(event, Event::FogChanged { shapes: 1 })));
+            .any(|event| matches!(event, Event::FogChanged { shapes } if shapes.len() == 1)));
         assert_eq!(server.campaign.scene().fog.shapes.len(), 1);
 
         let out = server.handle(HOST_CLIENT, ClientMsg::Intent(Intent::ClearFog));
         assert!(events(&out)
             .iter()
-            .any(|event| matches!(event, Event::FogChanged { shapes: 0 })));
+            .any(|event| matches!(event, Event::FogChanged { shapes } if shapes.is_empty())));
         assert!(server.campaign.scene().fog.shapes.is_empty());
     }
 
@@ -2177,7 +2177,7 @@ mod tests {
         );
         assert!(events(&out)
             .iter()
-            .any(|event| matches!(event, Event::WallsChanged { walls: 1 })));
+            .any(|event| matches!(event, Event::WallsChanged { walls } if walls.len() == 1)));
         assert_eq!(server.campaign.scene().walls.len(), 1);
 
         // Дверь закрыта — не видно; открыли — видно.

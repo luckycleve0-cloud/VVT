@@ -212,6 +212,11 @@ async fn run() -> anyhow::Result<()> {
     // Режим проверки визуала: открыть нужную панель до скриншота.
     if let Some(panel) = args.panel.as_deref() {
         match panel {
+            "wizard-token" => {
+                wizard.open();
+                wizard.step = 1;
+            }
+            "picker" => picker.show(),
             "wizard" => wizard.open(),
             "settings" => settings.open = true,
             "settings-keys" => {
@@ -643,6 +648,9 @@ async fn run() -> anyhow::Result<()> {
             }
         }
 
+        if clicked && !sidebar_rect {
+            chat_state.focus = false;
+        }
         if show_chat {
             let actions = panels::sidebar(
                 &assets,

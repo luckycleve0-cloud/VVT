@@ -678,7 +678,7 @@ pub fn describe_event(event: &Event) -> String {
         Event::HandoutPosted { title, text } => {
             format!("📜 {title}: {text}")
         }
-        Event::FogChanged { shapes } => format!("туман: областей {shapes}"),
+        Event::FogChanged { shapes } => format!("туман: областей {}", shapes.len()),
         Event::CharacterUpdated { character } => format!("лист: {}", character.summary()),
         Event::CharacterCheck {
             name,
@@ -696,7 +696,7 @@ pub fn describe_event(event: &Event) -> String {
             total,
             ..
         } => format!("{name}: +{gained} опыта (всего {total})"),
-        Event::WallsChanged { walls } => format!("стены: {walls}"),
+        Event::WallsChanged { walls } => format!("стены: {}", walls.len()),
         Event::SceneBoundsChanged {
             width_px,
             height_px,

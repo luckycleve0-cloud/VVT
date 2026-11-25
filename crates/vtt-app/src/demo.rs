@@ -816,7 +816,7 @@ fn describe(event: &Event) -> String {
             roll.total
         ),
         Event::HandoutPosted { title, .. } => format!("хендаут «{title}» показан игрокам"),
-        Event::FogChanged { shapes } => format!("туман: областей {shapes}"),
+        Event::FogChanged { shapes } => format!("туман: областей {}", shapes.len()),
         Event::CharacterUpdated { character } => format!("лист: {}", character.summary()),
         Event::CharacterCheck {
             name,
@@ -834,7 +834,7 @@ fn describe(event: &Event) -> String {
             total,
             ..
         } => format!("{name}: +{gained} опыта (всего {total})"),
-        Event::WallsChanged { walls } => format!("стены: {walls}"),
+        Event::WallsChanged { walls } => format!("стены: {}", walls.len()),
         Event::SceneBoundsChanged {
             width_px,
             height_px,
