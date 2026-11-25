@@ -399,26 +399,35 @@ mod tests {
         a.send(&hello("A")).unwrap();
         b.send(&hello("B")).unwrap();
 
-        let mut ids = Vec::new();
+        // Порядок подключений не гарантирован: определяем клиентов по имени.
+        let mut id_a = None;
+        let mut id_b = None;
         wait_for("два подключения", || {
-            for (id, _) in hub.poll() {
-                ids.push(id);
+            for (id, msg) in hub.poll() {
+                if let ClientMsg::Hello { name, .. } = &msg {
+                    match name.as_str() {
+                        "A" => id_a = Some(id),
+                        "B" => id_b = Some(id),
+                        _ => {}
+                    }
+                }
             }
-            if ids.len() == 2 {
+            if id_a.is_some() && id_b.is_some() {
                 Some(())
             } else {
                 None
             }
         });
+        let id_a = id_a.unwrap();
 
         let welcome = ServerMsg::Welcome(Welcome {
-            client: ids[0],
+            client: id_a,
             player: PlayerId(1),
             role: Role::Player,
             campaign: "Тест".into(),
             protocol: PROTOCOL_VERSION,
         });
-        hub.send_to(ids[0], &welcome).unwrap();
+        hub.send_to(id_a, &welcome).unwrap();
         let got = wait_for("Welcome у A", || a.poll().into_iter().next());
         assert_eq!(got, welcome);
 
