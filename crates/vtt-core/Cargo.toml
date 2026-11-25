@@ -1,0 +1,13 @@
+[package]
+name = "vtt-core"
+description = "Домен VTT: сущности, правила 5e, дайсы, сетка, права"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+serde.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true

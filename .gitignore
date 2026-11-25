@@ -1,0 +1,17 @@
+# Сборка
+/target
+
+# Локальные кампании и демо-данные
+/campaign
+/target/demo-campaign
+
+# ОС и редакторы
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+*.user
+
+# Локальные логи
+*.log

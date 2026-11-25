@@ -1,0 +1,12 @@
+[package]
+name = "vtt-net"
+description = "Транспорт: фрейминг сообщений и LAN-соединение по TCP"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+vtt-proto = { path = "../vtt-proto" }
+serde.workspace = true
+serde_json.workspace = true

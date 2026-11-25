@@ -1,0 +1,20 @@
+[package]
+name = "vtt-app"
+description = "CLI приложения VTT: демо, комната ГМа, клиент игрока"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "vtt"
+path = "src/main.rs"
+
+[dependencies]
+vtt-core = { path = "../vtt-core" }
+vtt-proto = { path = "../vtt-proto" }
+vtt-server = { path = "../vtt-server" }
+vtt-net = { path = "../vtt-net" }
+clap.workspace = true
+anyhow.workspace = true
+serde_json.workspace = true

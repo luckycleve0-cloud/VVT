@@ -1,0 +1,13 @@
+[package]
+name = "vtt-server"
+description = "Авторитарный сервер кампании: применяет намерения, рассылает события"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+vtt-core = { path = "../vtt-core" }
+vtt-proto = { path = "../vtt-proto" }
+serde.workspace = true
+serde_json.workspace = true
