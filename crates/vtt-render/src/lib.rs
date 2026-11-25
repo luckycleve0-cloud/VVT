@@ -15,7 +15,9 @@
 
 pub mod camera;
 pub mod draw;
+pub mod float;
 pub mod interact;
+pub mod keys;
 pub mod panels;
 pub mod picker;
 pub mod roster;

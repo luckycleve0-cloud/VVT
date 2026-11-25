@@ -77,6 +77,18 @@ prototype (map, tokens, walls, fog-of-war) and an interactive SCP character shee
 ---
 
 
+
+## Готовые сборки (без Rust)
+
+Скачайте ZIP из [Releases](https://github.com/luckycleve0-cloud/VVT/releases):
+`VVT-windows-x64.zip` (Windows 10/11 x64). Внутри:
+
+- `1-Play-window.bat` — окно ГМа с демо-картой;
+- `2-Host-room.bat` — создать комнату (печатает код и адрес);
+- `3-Join-player.bat` — подключиться игроком (спросит адрес, код, имя);
+- `4-Demo-check.bat` — проверка без сети.
+
+Rust и консольные команды не нужны: всё через `.bat`-файлы.
 ## Скачать и проверить подключение
 
 Публичный репозиторий: <https://github.com/luckycleve0-cloud/VVT>

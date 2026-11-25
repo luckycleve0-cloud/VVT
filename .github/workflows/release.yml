@@ -1,0 +1,45 @@
+﻿name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build
+        run: cargo build --release -p vtt-app -p vtt-render
+      - name: Package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist/assets/demo-art | Out-Null
+          Copy-Item target/release/vtt.exe dist/
+          Copy-Item target/release/vtt-play.exe dist/
+          Copy-Item LICENSE dist/
+          $readme = @"
+          VVT Windows x64. Запускайте 1-Play-window.bat, 2-Host-room.bat, 3-Join-player.bat.
+          Подробности: https://github.com/luckycleve0-cloud/VVT
+          "@
+          Set-Content dist/README.txt $readme -Encoding utf8
+          Set-Content dist/1-Play-window.bat '@echo off
+          start "" "%~dp0vtt-play.exe" --dir campaign --name "Кампания"' -Encoding utf8
+          Set-Content dist/2-Host-room.bat '@echo off
+          chcp 65001 >nul
+          "%~dp0vtt.exe" host --name "Кампания" --dir campaign
+          pause' -Encoding utf8
+          Set-Content dist/3-Join-player.bat '@echo off
+          chcp 65001 >nul
+          set /p ADDR=Адрес ГМа: 
+          set /p CODE=Код комнаты: 
+          set /p NAME=Ваше имя: 
+          "%~dp0vtt.exe" join %ADDR% --code %CODE% --name "%NAME%"
+          pause' -Encoding utf8
+          Compress-Archive -Path dist/* -DestinationPath VVT-windows-x64.zip -Force
+      - name: Attach to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: VVT-windows-x64.zip

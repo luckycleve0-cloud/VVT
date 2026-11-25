@@ -73,7 +73,9 @@ pub fn draw(
 
     for (action, _) in tools {
         let active = matches!(action, BarAction::Tool(tool) if tool == state.tool);
-        icon_button(assets, mouse, clicked, x, action, active, state);
+        if icon_button(assets, mouse, clicked, x, action, active, state) {
+            return Some(action);
+        }
         x += BUTTON;
     }
     // Разделитель.
@@ -96,7 +98,9 @@ pub fn draw(
             BarAction::TokenPanel => state.token,
             _ => false,
         };
-        icon_button(assets, mouse, clicked, x, action, active, state);
+        if icon_button(assets, mouse, clicked, x, action, active, state) {
+            return Some(action);
+        }
         x += BUTTON;
     }
 

@@ -16,7 +16,9 @@ use vtt_net::TcpHub;
 use vtt_proto::{CharacterPatch, ClientMsg, Intent, ServerMsg};
 use vtt_render::camera::Camera;
 use vtt_render::draw::{self, Assets, HudMode, Textures};
+use vtt_render::float::FloatWindow;
 use vtt_render::interact::{Action, Interaction, Pointer, Tool};
+use vtt_render::keys::{self, Action as KeyAction, Keymap};
 use vtt_render::panels::{self, ChatState, SettingsState, UiAction};
 use vtt_render::picker::{self, PickerState};
 use vtt_render::roster::{self, RosterAction};
@@ -133,11 +135,17 @@ async fn run() -> anyhow::Result<()> {
     let mut picker = PickerState::default();
     let mut chat_state = ChatState::default();
     let mut settings = SettingsState::default();
+    let mut wizard_win: Option<FloatWindow> = None;
+    let mut settings_win: Option<FloatWindow> = None;
+    let mut picker_win: Option<FloatWindow> = None;
+    let mut token_win: Option<FloatWindow> = None;
     let mut picker_target = PickerTarget::TokenImage;
     let mut token_panel_open = false;
     let mut show_chat = true;
     let mut show_grid = true;
     let mut hud_mode = HudMode::Compact;
+    let mut keymap = Keymap::load(&args.dir.join("keys.json"));
+    let mut capturing: Option<KeyAction> = None;
     let mut show_roster = true;
     let mut group_drag: Option<GroupDrag> = None;
     let mut rubber: Option<Vec2> = None;
@@ -206,6 +214,10 @@ async fn run() -> anyhow::Result<()> {
         match panel {
             "wizard" => wizard.open(),
             "settings" => settings.open = true,
+            "settings-keys" => {
+                settings.open = true;
+                settings.tab = vtt_render::panels::SettingsTab::Keys;
+            }
             "settings-interface" => {
                 settings.open = true;
                 settings.tab = vtt_render::panels::SettingsTab::Interface;
@@ -267,6 +279,17 @@ async fn run() -> anyhow::Result<()> {
         while let Some(ch) = get_char_pressed() {
             chars.push(ch);
         }
+        if let Some(target) = capturing {
+            if let Some(key) = keys::first_pressed() {
+                if key == KeyCode::Escape {
+                    capturing = None;
+                } else {
+                    keymap.set(target, key);
+                    let _ = keymap.save(&args.dir.join("keys.json"));
+                    capturing = None;
+                }
+            }
+        }
         let backspace = is_key_pressed(KeyCode::Backspace);
         let enter = is_key_pressed(KeyCode::Enter);
 
@@ -310,22 +333,22 @@ async fn run() -> anyhow::Result<()> {
         last_mouse = mouse;
 
         // Клавиши.
-        if is_key_pressed(KeyCode::Key1) {
+        if keymap.pressed(KeyAction::Select) {
             interaction.tool = Tool::Select;
         }
-        if is_key_pressed(KeyCode::Key2) {
+        if keymap.pressed(KeyAction::Ruler) {
             interaction.tool = Tool::Measure;
         }
-        if is_key_pressed(KeyCode::Key3) {
+        if keymap.pressed(KeyAction::Fog) {
             interaction.tool = Tool::Fog;
         }
-        if is_key_pressed(KeyCode::Key4) {
+        if keymap.pressed(KeyAction::Ping) {
             interaction.tool = Tool::Ping;
         }
-        if is_key_pressed(KeyCode::Key5) {
+        if keymap.pressed(KeyAction::Wall) {
             interaction.tool = Tool::Wall;
         }
-        if is_key_pressed(KeyCode::Key6) {
+        if keymap.pressed(KeyAction::Door) {
             interaction.tool = Tool::Door;
         }
         if is_key_pressed(KeyCode::H) {
@@ -335,42 +358,43 @@ async fn run() -> anyhow::Result<()> {
                 HudMode::Hidden => HudMode::Compact,
             };
         }
-        if is_key_pressed(KeyCode::G) {
+        if keymap.pressed(KeyAction::Grid) {
             show_grid = !show_grid;
         }
-        if is_key_pressed(KeyCode::F) {
+        if keymap.pressed(KeyAction::FogToggle) {
             session.show_fog = !session.show_fog;
         }
-        if is_key_pressed(KeyCode::Tab) {
+        if keymap.pressed(KeyAction::Sheet) {
             session.show_sheet = !session.show_sheet;
         }
-        if is_key_pressed(KeyCode::L) {
+        if keymap.pressed(KeyAction::Roster) {
             show_roster = !show_roster;
         }
-        if is_key_pressed(KeyCode::T) {
+        if keymap.pressed(KeyAction::Chat) {
             show_chat = !show_chat;
         }
-        if is_key_pressed(KeyCode::Y) {
+        if keymap.pressed(KeyAction::TokenPanel) {
             token_panel_open = !token_panel_open;
         }
-        if is_key_pressed(KeyCode::R) {
+        if keymap.pressed(KeyAction::Settings) {
             settings.open = !settings.open;
         }
-        if is_key_pressed(KeyCode::P) {
+        if keymap.pressed(KeyAction::Wizard) {
             wizard.open();
         }
-        if is_key_pressed(KeyCode::C) {
+        if keymap.pressed(KeyAction::ClearFog) {
             session.apply(Intent::ClearFog);
         }
-        if is_key_pressed(KeyCode::S) {
+        if keymap.pressed(KeyAction::Save) {
             if let Ok(path) = session.save() {
                 println!("сохранено: {}", path.display());
             }
         }
-        if is_key_pressed(KeyCode::B) && !session.spawn_monster("Гоблин", pointer.world) {
+        if keymap.pressed(KeyAction::Monster) && !session.spawn_monster("Гоблин", pointer.world)
+        {
             println!("в компендиуме нет «Гоблина»");
         }
-        if is_key_pressed(KeyCode::N) {
+        if keymap.pressed(KeyAction::NewToken) {
             session.create_token("Новый токен", pointer.world);
         }
         if is_key_pressed(KeyCode::Escape) {
@@ -384,14 +408,14 @@ async fn run() -> anyhow::Result<()> {
             }
             chat_state.focus = false;
         }
-        if is_key_pressed(KeyCode::Delete) && !overlay {
+        if keymap.pressed(KeyAction::Delete) && !overlay {
             let tokens = session.selected_ids();
             for token in tokens {
                 session.delete_token(token);
             }
             session.clear_selection();
         }
-        if is_key_pressed(KeyCode::Q) && is_key_down(KeyCode::LeftControl) {
+        if keymap.pressed(KeyAction::Quit) && is_key_down(KeyCode::LeftControl) {
             break;
         }
 
@@ -592,16 +616,31 @@ async fn run() -> anyhow::Result<()> {
             }
         }
 
-        let token_actions = panels::token_panel(
-            &assets,
-            viewport,
-            mouse,
-            clicked,
-            &session,
-            token_panel_open,
-        );
-        for action in token_actions {
-            apply_ui_action(&mut session, &mut settings, action, None, &mut hud_mode);
+        if token_panel_open {
+            let win = token_win.get_or_insert_with(|| {
+                FloatWindow::bottom_right(viewport, Vec2::new(560.0, 132.0), "Токен")
+            });
+            win.update(
+                mouse,
+                clicked,
+                is_mouse_button_down(MouseButton::Left),
+                viewport,
+            );
+            let content_click = clicked && win.is_content_point(mouse);
+            let content = win.content_size();
+            let (content_mouse, _) = win.begin_content(&assets, mouse);
+            let actions = panels::token_panel(
+                &assets,
+                content,
+                content_mouse,
+                content_click,
+                &session,
+                true,
+            );
+            win.end_content(&ui_cam, mouse);
+            for action in actions {
+                apply_ui_action(&mut session, &mut settings, action, None, &mut hud_mode);
+            }
         }
 
         if show_chat {
@@ -628,16 +667,39 @@ async fn run() -> anyhow::Result<()> {
         }
 
         if settings.open {
-            let actions = panels::settings_panel(
-                &assets,
-                viewport,
+            let win = settings_win.get_or_insert_with(|| {
+                FloatWindow::centered(viewport, Vec2::new(820.0, 540.0), "Настройки")
+            });
+            win.update(
                 mouse,
                 clicked,
+                is_mouse_button_down(MouseButton::Left),
+                viewport,
+            );
+            let content_click = clicked && win.is_content_point(mouse);
+            let content = win.content_size();
+            let (content_mouse, _) = win.begin_content(&assets, mouse);
+            let actions = panels::settings_panel(
+                &assets,
+                content,
+                content_mouse,
+                content_click,
                 &session,
                 &mut settings,
                 hud_mode,
+                &keymap,
+                capturing,
             );
+            win.end_content(&ui_cam, mouse);
             for action in actions {
+                if let UiAction::EditKey(target) = action {
+                    capturing = if capturing == Some(target) {
+                        None
+                    } else {
+                        Some(target)
+                    };
+                    continue;
+                }
                 if action == UiAction::PickMap {
                     picker_target = PickerTarget::Map;
                     picker.show();
@@ -654,17 +716,30 @@ async fn run() -> anyhow::Result<()> {
         }
 
         if wizard.open {
+            let win = wizard_win.get_or_insert_with(|| {
+                FloatWindow::centered(viewport, Vec2::new(1000.0, 720.0), "Создание персонажа")
+            });
+            win.update(
+                mouse,
+                clicked,
+                is_mouse_button_down(MouseButton::Left),
+                viewport,
+            );
+            let content_click = clicked && win.is_content_point(mouse);
+            let content = win.content_size();
+            let (content_mouse, _) = win.begin_content(&assets, mouse);
             let actions = wizard::draw(
                 &assets,
                 &mut textures,
-                viewport,
-                mouse,
-                clicked,
+                content,
+                content_mouse,
+                content_click,
                 wheel,
                 &chars,
                 backspace,
                 &mut wizard,
             );
+            win.end_content(&ui_cam, mouse);
             for action in actions {
                 match action {
                     WizardAction::Close => wizard.open = false,
@@ -691,8 +766,28 @@ async fn run() -> anyhow::Result<()> {
         }
 
         if picker.open {
-            if let Some(path) = picker::draw(&assets, viewport, mouse, clicked, wheel, &mut picker)
-            {
+            let win = picker_win.get_or_insert_with(|| {
+                FloatWindow::centered(viewport, Vec2::new(720.0, 560.0), "Выбор файла")
+            });
+            win.update(
+                mouse,
+                clicked,
+                is_mouse_button_down(MouseButton::Left),
+                viewport,
+            );
+            let content_click = clicked && win.is_content_point(mouse);
+            let content = win.content_size();
+            let (content_mouse, _) = win.begin_content(&assets, mouse);
+            let selection = picker::draw(
+                &assets,
+                content,
+                content_mouse,
+                content_click,
+                wheel,
+                &mut picker,
+            );
+            win.end_content(&ui_cam, mouse);
+            if let Some(path) = selection {
                 let path_text = path.to_string_lossy().into_owned();
                 match picker_target {
                     PickerTarget::TokenImage => wizard.set_image_path(&path),
@@ -700,7 +795,6 @@ async fn run() -> anyhow::Result<()> {
                 }
             }
         }
-
         // ---- Перенос виртуального экрана в окно ----
         set_default_camera();
         clear_background(BLACK);
@@ -825,6 +919,7 @@ fn apply_ui_action(
             });
         }
         UiAction::HudMode(mode) => *hud_mode = mode,
+        UiAction::EditKey(_) => {}
         UiAction::TokenSize(size) => session.set_size_for_selection(size),
         UiAction::TokenOpacity(opacity) => session.set_opacity_for_selection(opacity),
         UiAction::TokenHidden(hidden) => session.set_hidden_for_selection(hidden),
