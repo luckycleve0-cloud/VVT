@@ -153,6 +153,10 @@ impl Interaction {
 
     /// Отпускание левой кнопкой.
     pub fn release(&mut self, pointer: Pointer, grid: &Grid) -> Option<Action> {
+        if self.tool != Tool::Measure {
+            self.measure_from = None;
+            self.measure_to = None;
+        }
         if self.tool == Tool::Wall {
             let start = self.wall_start.take()?;
             if start.distance(pointer.world) < 8.0 {
@@ -181,6 +185,10 @@ impl Interaction {
             });
         }
 
+        // Линейка остаётся на экране до следующего клика/смены инструмента.
+        if self.tool == Tool::Measure {
+            return None;
+        }
         self.measure_from = None;
         self.measure_to = None;
         None

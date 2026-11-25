@@ -339,21 +339,27 @@ async fn run() -> anyhow::Result<()> {
 
         // Клавиши.
         if keymap.pressed(KeyAction::Select) {
+            interaction.cancel();
             interaction.tool = Tool::Select;
         }
         if keymap.pressed(KeyAction::Ruler) {
+            interaction.cancel();
             interaction.tool = Tool::Measure;
         }
         if keymap.pressed(KeyAction::Fog) {
+            interaction.cancel();
             interaction.tool = Tool::Fog;
         }
         if keymap.pressed(KeyAction::Ping) {
+            interaction.cancel();
             interaction.tool = Tool::Ping;
         }
         if keymap.pressed(KeyAction::Wall) {
+            interaction.cancel();
             interaction.tool = Tool::Wall;
         }
         if keymap.pressed(KeyAction::Door) {
+            interaction.cancel();
             interaction.tool = Tool::Door;
         }
         if is_key_pressed(KeyCode::H) {
@@ -543,7 +549,10 @@ async fn run() -> anyhow::Result<()> {
             };
             if let Some(action) = toolbar::draw(&assets, viewport, mouse, clicked, state) {
                 match action {
-                    BarAction::Tool(tool) => interaction.tool = tool,
+                    BarAction::Tool(tool) => {
+                        interaction.cancel();
+                        interaction.tool = tool;
+                    }
                     BarAction::Grid => show_grid = !show_grid,
                     BarAction::Roster => show_roster = !show_roster,
                     BarAction::NewCharacter => wizard.open(),

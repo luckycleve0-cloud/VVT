@@ -739,3 +739,33 @@ mod tests {
         assert_eq!(corner_alpha, 0, "угол должен стать прозрачным");
     }
 }
+
+/// Мягкая тень под панелью/окном (несколько прямоугольников с прозрачностью).
+pub fn panel_shadow(x: f32, y: f32, w: f32, h: f32, strength: f32) {
+    for step in 1..=4 {
+        let grow = step as f32 * 3.0;
+        let alpha = (strength / step as f32) * 0.35;
+        draw_rectangle(
+            x - grow,
+            y + 4.0,
+            w + grow * 2.0,
+            h + grow,
+            rgba(0, 0, 0, (alpha * 255.0) as u8),
+        );
+    }
+}
+
+/// Панель со скруглёнными углами и рамкой (аппроксимация кругами).
+pub fn rounded_panel(x: f32, y: f32, w: f32, h: f32, fill: Color, border: Color) {
+    let radius = 8.0;
+    draw_rectangle(x + radius, y, w - radius * 2.0, h, fill);
+    draw_rectangle(x, y + radius, w, h - radius * 2.0, fill);
+    draw_circle(x + radius, y + radius, radius, fill);
+    draw_circle(x + w - radius, y + radius, radius, fill);
+    draw_circle(x + radius, y + h - radius, radius, fill);
+    draw_circle(x + w - radius, y + h - radius, radius, fill);
+    draw_line(x + radius, y, x + w - radius, y, 1.5, border);
+    draw_line(x + radius, y + h, x + w - radius, y + h, 1.5, border);
+    draw_line(x, y + radius, x, y + h - radius, 1.5, border);
+    draw_line(x + w, y + radius, x + w, y + h - radius, 1.5, border);
+}

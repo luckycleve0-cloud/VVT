@@ -44,8 +44,17 @@ pub fn draw(
     clicked: bool,
     state: BarState,
 ) -> Option<BarAction> {
-    draw_rectangle(0.0, 0.0, viewport.x, HEIGHT, rgba(14, 16, 20, 252));
+    draw_rectangle(0.0, 0.0, viewport.x, HEIGHT, rgba(12, 14, 18, 252));
+    draw_rectangle(0.0, 0.0, viewport.x, HEIGHT * 0.55, rgba(28, 32, 42, 120));
     draw_line(0.0, HEIGHT, viewport.x, HEIGHT, 1.0, rgba(70, 80, 96, 255));
+    draw_line(
+        0.0,
+        HEIGHT - 1.0,
+        viewport.x,
+        HEIGHT - 1.0,
+        1.0,
+        rgba(232, 192, 90, 70),
+    );
 
     // Название.
     crate::draw::text(assets, "VTT", 14.0, 31.0, 20.0, rgba(240, 200, 90, 255));
@@ -138,6 +147,13 @@ fn icon_button(
             rect.h,
             1.5,
             rgba(150, 190, 255, 255),
+        );
+        draw_rectangle(
+            rect.x + 6.0,
+            rect.y + rect.h - 3.0,
+            rect.w - 12.0,
+            2.5,
+            rgba(232, 192, 90, 255),
         );
     }
     let color = if active {

@@ -262,10 +262,18 @@ impl FloatWindow {
         text(
             assets,
             self.title,
-            self.x + 10.0,
+            self.x + 14.0,
             self.y + 18.0,
             14.0,
-            rgba(220, 228, 240, 255),
+            rgba(228, 234, 244, 255),
+        );
+        draw_line(
+            self.x + 10.0,
+            self.y + TITLE - 1.0,
+            self.x + self.w - 10.0,
+            self.y + TITLE - 1.0,
+            2.0,
+            rgba(232, 192, 90, 210),
         );
         // Уголок ресайза.
         for index in 0..3 {
