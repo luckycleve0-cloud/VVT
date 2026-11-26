@@ -1211,3 +1211,130 @@ fn keys_tab(
         }
     }
 }
+
+/// Геометрия контекстной плашки под токеном: (x, y, w, h).
+#[must_use]
+pub fn token_context_rect(anchor: Vec2, viewport: Vec2) -> (f32, f32, f32, f32) {
+    let w = 286.0;
+    let h = 44.0;
+    let x = (anchor.x - w * 0.5).clamp(8.0, viewport.x - w - 8.0);
+    let y = (anchor.y + 34.0).clamp(8.0, viewport.y - h - 8.0);
+    (x, y, w, h)
+}
+
+/// Мини-панель под выбранным токеном: размер, прозрачность, скрытие.
+pub fn token_context(
+    assets: &Assets,
+    viewport: Vec2,
+    mouse: Vec2,
+    clicked: bool,
+    session: &LocalSession,
+    anchor: Vec2,
+) -> Vec<UiAction> {
+    use vtt_core::entities::TokenSize;
+
+    let mut actions = Vec::new();
+    let Some(primary) = session.selected_token else {
+        return actions;
+    };
+    let Some(token) = session.scene().token(primary) else {
+        return actions;
+    };
+    let (x, y, w, h) = token_context_rect(anchor, viewport);
+    crate::draw::panel_shadow(x, y, w, h, 0.8);
+    crate::draw::rounded_panel(x, y, w, h, rgba(20, 23, 30, 250), rgba(120, 132, 152, 255));
+
+    let sizes = [
+        (TokenSize::Tiny, "T"),
+        (TokenSize::Small, "S"),
+        (TokenSize::Medium, "M"),
+        (TokenSize::Large, "L"),
+        (TokenSize::Huge, "H"),
+        (TokenSize::Gargantuan, "G"),
+    ];
+    let index = sizes
+        .iter()
+        .position(|(size, _)| *size == token.size)
+        .unwrap_or(2);
+    if button(
+        assets,
+        mouse,
+        clicked,
+        Rect::new(x + 6.0, y + 8.0, 26.0, 28.0),
+        "<",
+        false,
+        true,
+    ) {
+        actions.push(UiAction::TokenSize(sizes[index.saturating_sub(1).min(5)].0));
+    }
+    let name = sizes[index].1;
+    text(
+        assets,
+        name,
+        x + 40.0,
+        y + 27.0,
+        16.0,
+        rgba(235, 240, 248, 255),
+    );
+    if button(
+        assets,
+        mouse,
+        clicked,
+        Rect::new(x + 56.0, y + 8.0, 26.0, 28.0),
+        ">",
+        false,
+        true,
+    ) {
+        actions.push(UiAction::TokenSize(sizes[(index + 1).min(5)].0));
+    }
+
+    let opacity = token.opacity.clamp(0.05, 1.0);
+    if button(
+        assets,
+        mouse,
+        clicked,
+        Rect::new(x + 98.0, y + 8.0, 34.0, 28.0),
+        "−",
+        false,
+        opacity > 0.1,
+    ) {
+        actions.push(UiAction::TokenOpacity((opacity - 0.1).max(0.05)));
+    }
+    text(
+        assets,
+        &format!("{:.0}%", opacity * 100.0),
+        x + 138.0,
+        y + 27.0,
+        14.0,
+        rgba(210, 218, 232, 255),
+    );
+    if button(
+        assets,
+        mouse,
+        clicked,
+        Rect::new(x + 176.0, y + 8.0, 34.0, 28.0),
+        "+",
+        false,
+        opacity < 1.0,
+    ) {
+        actions.push(UiAction::TokenOpacity((opacity + 0.1).min(1.0)));
+    }
+
+    if button(
+        assets,
+        mouse,
+        clicked,
+        Rect::new(x + 216.0, y + 8.0, 62.0, 28.0),
+        if token.hidden {
+            "показать"
+        } else {
+            "скрыть"
+        },
+        token.hidden,
+        true,
+    ) {
+        actions.push(UiAction::TokenHidden(!token.hidden));
+    }
+
+    actions
+}

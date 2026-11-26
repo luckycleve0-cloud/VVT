@@ -895,6 +895,13 @@ impl CheckResult {
 // Персонаж
 // ---------------------------------------------------------------------------
 
+/// Пользовательское поле лора в листе персонажа.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LoreField {
+    pub name: String,
+    pub value: String,
+}
+
 /// Лист персонажа SCP.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ScpCharacter {
@@ -903,6 +910,9 @@ pub struct ScpCharacter {
     pub class: ScpClass,
     pub organization: String,
     pub access: AccessLevel,
+    /// Пользовательские лорные поля (имя + значение).
+    #[serde(default)]
+    pub lore: Vec<LoreField>,
     pub attributes: Attributes,
     pub skills: BTreeMap<ScpSkill, u8>,
     pub physical: Health,
@@ -938,6 +948,7 @@ impl ScpCharacter {
             access: AccessLevel::First,
             attributes,
             skills: BTreeMap::new(),
+            lore: Vec::new(),
             physical: Health::new(0),
             mental: Health::new(0),
             xp: 0,

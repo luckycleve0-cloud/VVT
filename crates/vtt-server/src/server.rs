@@ -1243,6 +1243,13 @@ fn apply_character_patch(character: &mut ScpCharacter, patch: &CharacterPatch) {
             character.attributes.set(attr, value);
         }
     }
+    if let Some(lore) = &patch.lore {
+        character.lore = lore
+            .iter()
+            .filter(|field| !field.name.trim().is_empty())
+            .cloned()
+            .collect();
+    }
     if let Some(skills) = &patch.skills {
         for (skill, value) in skills {
             let clamped = (*value).min(20);

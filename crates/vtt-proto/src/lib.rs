@@ -264,6 +264,8 @@ pub struct CharacterPatch {
     pub class_focus: Option<ScpSkill>,
     pub quirk: Option<String>,
     pub notes: Option<String>,
+    #[serde(default)]
+    pub lore: Option<Vec<vtt_core::scp::LoreField>>,
 }
 
 /// Итог спасброска от смерти.

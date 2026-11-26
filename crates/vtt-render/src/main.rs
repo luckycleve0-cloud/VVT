@@ -232,6 +232,11 @@ async fn run() -> anyhow::Result<()> {
                 settings.open = true;
                 settings.tab = vtt_render::panels::SettingsTab::Field;
             }
+            "context" => {
+                if let Some(id) = first_token_with_character(&session) {
+                    session.select_only(id);
+                }
+            }
             "token" => {
                 token_panel_open = true;
                 if let Some(id) = first_token_with_character(&session) {
@@ -331,8 +336,35 @@ async fn run() -> anyhow::Result<()> {
         let roster_hit = show_roster && mouse.x < roster::WIDTH;
         let sidebar_rect =
             show_chat && mouse.x > VW - panels::SIDEBAR_WIDTH && mouse.y > toolbar::HEIGHT;
-        let overlay =
-            wizard.open || picker.open || settings.open || sheet_hit || roster_hit || sidebar_rect;
+        let context_anchor = if session.selection.len() == 1 {
+            session.selected_token.and_then(|id| {
+                session
+                    .scene()
+                    .token(id)
+                    .map(|token| camera.world_to_screen(token.pos, viewport))
+            })
+        } else {
+            None
+        };
+        let context_rect =
+            context_anchor.map(|anchor| panels::token_context_rect(anchor, viewport));
+        let context_hit = context_rect.is_some_and(|(x, y, w, h)| {
+            mouse.x >= x && mouse.x <= x + w && mouse.y >= y && mouse.y <= y + h
+        });
+        let token_block = token_panel_open
+            && token_win
+                .as_ref()
+                .is_some_and(|window| window.contains(mouse));
+        let bar_hit = mouse.y <= toolbar::HEIGHT;
+        let overlay = wizard.open
+            || picker.open
+            || settings.open
+            || sheet_hit
+            || roster_hit
+            || sidebar_rect
+            || bar_hit
+            || token_block
+            || context_hit;
 
         if !overlay && wheel.abs() > 0.0 {
             let current = (camera.zoom * 100.0).round() as i32;
@@ -673,6 +705,16 @@ async fn run() -> anyhow::Result<()> {
         if clicked && !sidebar_rect {
             chat_state.focus = false;
         }
+        if let (Some(anchor), false, false, false) =
+            (context_anchor, wizard.open, settings.open, picker.open)
+        {
+            let actions =
+                panels::token_context(&assets, viewport, mouse, clicked, &session, anchor);
+            for action in actions {
+                apply_ui_action(&mut session, &mut settings, action, None, &mut hud_mode);
+            }
+        }
+
         if show_chat {
             let actions = panels::sidebar(
                 &assets,
