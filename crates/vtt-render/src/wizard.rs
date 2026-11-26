@@ -27,6 +27,9 @@ pub struct WizardData {
     pub image: Option<String>,
     pub frame: vtt_core::entities::TokenFrame,
     pub color: [u8; 3],
+    pub crop_zoom: f32,
+    pub crop_x: f32,
+    pub crop_y: f32,
 }
 
 /// Действие мастера.
@@ -52,7 +55,11 @@ pub struct WizardState {
     pub image: Option<String>,
     pub frame: vtt_core::entities::TokenFrame,
     pub color: [u8; 3],
+    pub crop_zoom: f32,
+    pub crop_x: f32,
+    pub crop_y: f32,
     focus_name: bool,
+    crop_drag: Option<Vec2>,
 }
 
 impl Default for WizardState {
@@ -68,7 +75,11 @@ impl Default for WizardState {
             image: None,
             frame: vtt_core::entities::TokenFrame::Ring,
             color: [240, 200, 80],
+            crop_zoom: 1.0,
+            crop_x: 0.0,
+            crop_y: 0.0,
             focus_name: false,
+            crop_drag: None,
         }
     }
 }
@@ -115,6 +126,9 @@ impl WizardState {
             image: self.image.clone(),
             frame: self.frame,
             color: self.color,
+            crop_zoom: self.crop_zoom,
+            crop_x: self.crop_x,
+            crop_y: self.crop_y,
         }
     }
 }
@@ -206,6 +220,7 @@ pub fn draw(
     viewport: Vec2,
     mouse: Vec2,
     clicked: bool,
+    left_down: bool,
     wheel: f32,
     chars: &[char],
     backspace: bool,
@@ -277,7 +292,9 @@ pub fn draw(
         actions.extend(draw_sheet_step(
             assets, mouse, clicked, wheel, chars, backspace, state, x, y,
         ));
-    } else if let Some(action) = draw_token_step(assets, textures, mouse, clicked, state, x, y) {
+    } else if let Some(action) =
+        draw_token_step(assets, textures, mouse, clicked, left_down, state, x, y)
+    {
         actions.push(action);
     }
 
@@ -624,11 +641,13 @@ fn draw_sheet_step(
     Vec::new()
 }
 
+#[allow(clippy::too_many_arguments)]
 fn draw_token_step(
     assets: &Assets,
     textures: &mut Textures,
     mouse: Vec2,
     clicked: bool,
+    left_down: bool,
     state: &mut WizardState,
     x: f32,
     y: f32,
@@ -652,7 +671,9 @@ fn draw_token_step(
     draw_circle(center.x, center.y, radius + 3.0, rgba(40, 44, 54, 255));
     let mut drew_image = false;
     if let Some(path) = &state.image {
-        if let Some(texture) = textures.get(path) {
+        if let Some(texture) =
+            textures.get_cropped(path, state.crop_zoom, state.crop_x, state.crop_y)
+        {
             draw_texture_ex(
                 texture,
                 center.x - radius,
@@ -705,6 +726,53 @@ fn draw_token_step(
         state.image = None;
     }
     by += 44.0;
+
+    // Область круга: зум и перетаскивание фото внутри превью.
+    if button(
+        assets,
+        mouse,
+        clicked,
+        Rect::new(left, by, 110.0, 26.0),
+        "Крупнее",
+        false,
+        state.image.is_some(),
+    ) {
+        state.crop_zoom = (state.crop_zoom + 0.25).min(4.0);
+    }
+    if button(
+        assets,
+        mouse,
+        clicked,
+        Rect::new(left + 118.0, by, 110.0, 26.0),
+        "Мельче",
+        false,
+        state.image.is_some(),
+    ) {
+        state.crop_zoom = (state.crop_zoom - 0.25).max(1.0);
+    }
+    let inside_circle =
+        (mouse.x - center.x).powi(2) + (mouse.y - center.y).powi(2) < radius * radius;
+    if clicked && inside_circle {
+        state.crop_drag = Some(mouse);
+    }
+    if !left_down {
+        state.crop_drag = None;
+    }
+    if let Some(last) = state.crop_drag {
+        let delta = mouse - last;
+        state.crop_x = (state.crop_x - delta.x / (radius * 2.0)).clamp(-0.45, 0.45);
+        state.crop_y = (state.crop_y - delta.y / (radius * 2.0)).clamp(-0.45, 0.45);
+        state.crop_drag = Some(mouse);
+    }
+    text(
+        assets,
+        "перетащите фото в круге — выберите область",
+        left,
+        by + 42.0,
+        12.0,
+        rgba(150, 158, 174, 255),
+    );
+    by += 60.0;
 
     text(assets, "Рамка", left, by, 15.0, rgba(170, 178, 194, 255));
     by += 8.0;

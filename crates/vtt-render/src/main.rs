@@ -138,6 +138,7 @@ async fn run() -> anyhow::Result<()> {
     let mut wizard_win: Option<FloatWindow> = None;
     let mut settings_win: Option<FloatWindow> = None;
     let mut picker_win: Option<FloatWindow> = None;
+    let mut native_dialog: Option<mpsc::Receiver<Option<PathBuf>>> = None;
     let mut token_win: Option<FloatWindow> = None;
     let mut picker_target = PickerTarget::TokenImage;
     let mut token_panel_open = false;
@@ -292,6 +293,18 @@ async fn run() -> anyhow::Result<()> {
                     keymap.set(target, key);
                     let _ = keymap.save(&args.dir.join("keys.json"));
                     capturing = None;
+                }
+            }
+        }
+        if let Some(rx) = &native_dialog {
+            if let Ok(choice) = rx.try_recv() {
+                native_dialog = None;
+                if let Some(path) = choice {
+                    let path_text = path.to_string_lossy().into_owned();
+                    match picker_target {
+                        PickerTarget::TokenImage => wizard.set_image_path(&path),
+                        PickerTarget::Map => session.set_background(Some(path_text)),
+                    }
                 }
             }
         }
@@ -719,7 +732,7 @@ async fn run() -> anyhow::Result<()> {
                 }
                 if action == UiAction::PickMap {
                     picker_target = PickerTarget::Map;
-                    picker.show();
+                    native_dialog = Some(pick_image_file());
                     continue;
                 }
                 apply_ui_action(
@@ -751,6 +764,7 @@ async fn run() -> anyhow::Result<()> {
                 content,
                 content_mouse,
                 content_click,
+                is_mouse_button_down(MouseButton::Left),
                 wheel,
                 &chars,
                 backspace,
@@ -762,9 +776,27 @@ async fn run() -> anyhow::Result<()> {
                     WizardAction::Close => wizard.open = false,
                     WizardAction::PickImage => {
                         picker_target = PickerTarget::TokenImage;
-                        picker.show();
+                        native_dialog = Some(pick_image_file());
                     }
-                    WizardAction::Create(data) => {
+                    WizardAction::Create(mut data) => {
+                        if let Some(source) = data.image.clone() {
+                            let tokens_dir = args.dir.join("tokens");
+                            let _ = std::fs::create_dir_all(&tokens_dir);
+                            let stamp = std::time::SystemTime::now()
+                                .duration_since(std::time::UNIX_EPOCH)
+                                .map(|value| value.as_millis())
+                                .unwrap_or(0);
+                            let out = tokens_dir.join(format!("token-{stamp}.png"));
+                            if draw::save_cropped_token(
+                                &source,
+                                data.crop_zoom,
+                                data.crop_x,
+                                data.crop_y,
+                                &out,
+                            ) {
+                                data.image = Some(out.to_string_lossy().into_owned());
+                            }
+                        }
                         session.create_character_full(
                             &data.name,
                             data.class,
@@ -1049,6 +1081,18 @@ fn adjust_health(session: &mut LocalSession, id: EntityId, delta: i32, mental: b
         }
     };
     session.update_character(id, patch);
+}
+
+fn pick_image_file() -> mpsc::Receiver<Option<PathBuf>> {
+    let (tx, rx) = mpsc::channel();
+    thread::spawn(move || {
+        let file = rfd::FileDialog::new()
+            .add_filter("Картинки", &["png", "jpg", "jpeg", "bmp", "webp"])
+            .set_title("Выберите картинку")
+            .pick_file();
+        let _ = tx.send(file);
+    });
+    rx
 }
 
 fn parse_args() -> Args {

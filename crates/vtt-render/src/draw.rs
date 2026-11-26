@@ -58,6 +58,17 @@ impl Textures {
     }
 
     #[must_use]
+    /// Круглая текстура с выбранной областью (зум и сдвиг кадра).
+    pub fn get_cropped(&mut self, path: &str, zoom: f32, ox: f32, oy: f32) -> Option<&Texture2D> {
+        let key = format!("{path}|{zoom:.2}|{ox:.3}|{oy:.3}");
+        if !self.cache.contains_key(&key) {
+            if let Some(texture) = load_round_texture_cropped(path, zoom, ox, oy) {
+                self.cache.insert(key.clone(), texture);
+            }
+        }
+        self.cache.get(&key)
+    }
+
     pub fn loaded(&self) -> usize {
         self.cache.len()
     }
@@ -724,6 +735,46 @@ pub fn rounded_panel(x: f32, y: f32, w: f32, h: f32, fill: Color, border: Color)
     draw_line(x + radius, y + h, x + w - radius, y + h, 1.5, border);
     draw_line(x, y + radius, x, y + h - radius, 1.5, border);
     draw_line(x + w, y + radius, x + w, y + h - radius, 1.5, border);
+}
+
+/// Вырезать из картинки квадратную область под круглый токен.
+///
+/// `zoom` >= 1 — насколько крупнее берём область; `ox`/`oy` — сдвиг в долях
+/// ширины/высоты (перетаскивание внутри круга).
+fn crop_square(path: &str, zoom: f32, ox: f32, oy: f32) -> Option<image::RgbaImage> {
+    let (width, height, bytes) = decode_rgba(path)?;
+    let image = image::RgbaImage::from_raw(width as u32, height as u32, bytes)?;
+    let side = ((width.min(height) as f32) / zoom.max(1.0)).round() as u32;
+    let side = side.clamp(8, width as u32).min(height as u32);
+    let half = side as f32 * 0.5;
+    let cx = (width as f32 * 0.5 + ox * width as f32).clamp(half, width as f32 - half);
+    let cy = (height as f32 * 0.5 + oy * height as f32).clamp(half, height as f32 - half);
+    let x0 = (cx - half).round().max(0.0) as u32;
+    let y0 = (cy - half).round().max(0.0) as u32;
+    Some(image::imageops::crop_imm(&image, x0, y0, side, side).to_image())
+}
+
+/// Круглая текстура из выбранной области картинки.
+fn load_round_texture_cropped(path: &str, zoom: f32, ox: f32, oy: f32) -> Option<Texture2D> {
+    let cropped = crop_square(path, zoom, ox, oy)?;
+    let resized =
+        image::imageops::resize(&cropped, 256, 256, image::imageops::FilterType::Lanczos3);
+    let image = Image {
+        width: 256,
+        height: 256,
+        bytes: resized.into_raw(),
+    };
+    Some(Texture2D::from_image(&round_mask(image)))
+}
+
+/// Сохранить выбранную область картинки квадратным PNG (для токена).
+pub fn save_cropped_token(path: &str, zoom: f32, ox: f32, oy: f32, out: &std::path::Path) -> bool {
+    let Some(cropped) = crop_square(path, zoom, ox, oy) else {
+        return false;
+    };
+    let resized =
+        image::imageops::resize(&cropped, 256, 256, image::imageops::FilterType::Lanczos3);
+    resized.save(out).is_ok()
 }
 
 #[cfg(test)]
